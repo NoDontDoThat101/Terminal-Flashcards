@@ -1,40 +1,75 @@
 package com.AliceficialIntelligence.app;
 
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.util.function.IntConsumer;
 import java.util.Collections;
+import java.lang.System;
+
+import org.jline.terminal.*;
 
 public class TerminalFlashcards {
     public static void main(String[] args) {
-
     }
 }
 class Flashcard {
+    public static void main(String[] args) throws IOException {
+        ArrayList<String> myAnswers = new ArrayList<String>();
+        myAnswers.add("Correct");
+        ArrayList<String> myOptions = new ArrayList<String>();
+        myOptions.add("Correct");
+        myOptions.add("Wrong");
+        myOptions.add("Wronger");
+        Flashcard card = new Flashcard(1, "Test", myOptions, myAnswers);
+        card.runCard();
+    }
+    static int terminalWidth;
+    static int terminalHeight;
+    static char stallChar;
+    static Cursor cursor;
+    static IntConsumer discard;
     int type;
     String question;
     ArrayList<String> options = new ArrayList<String>();
     ArrayList<String> answers = new ArrayList<String>();
+    public static void stallingIcon() {
+        switch ((int)(System.currentTimeMillis() / 100 % 4)) {
+            case (0): stallChar = '-'; break;
+            case (1): stallChar = '\\'; break;
+            case (2): stallChar = '|'; break;
+            case (3): stallChar = '/'; break;
+        }
+        System.out.print(String.format("\033[1D%c",stallChar));
+    }
+    private static String waitForInput() {
+        try (Scanner scanr = new Scanner(System.in)) {
+            while (scanr.hasNextLine() == false) {
+                stallingIcon();
+            }
+            return scanr.nextLine();
+        }
+    }
+    private static void updateTerminalCondition() {
+        try (Terminal terminal = TerminalBuilder.builder().build();) {
+            terminalWidth = terminal.getWidth();
+            terminalHeight = terminal.getHeight();
+            cursor = terminal.getCursorPosition(discard);
+        } catch (IOException except) {
+            System.out.println("Oops.");
+        }
+    }
     public Flashcard() {
         this.type = 0;
         this.question = "Default question";
         this.options.add("Default Option");
         this.answers.add("Default Answer");
     }
-    public Flashcard(String csvLine) {
-        try (Scanner scanr = new Scanner(csvLine).useDelimiter("\\s*,\\s*")) {
-            this.type = scanr.nextInt();
-            this.question = scanr.next();
-            try (Scanner subscanr = new Scanner(scanr.next()).useDelimiter("\\s*&&\\s*")) {
-                while (subscanr.hasNext()) {
-                    this.options.add(subscanr.next());
-                }
-            }
-            try (Scanner subscanr = new Scanner(scanr.next()).useDelimiter("\\s*&&\\s*")) {
-                while (subscanr.hasNext()) {
-                    this.answers.add(subscanr.next());
-                }
-            }
-        }
+    public Flashcard(int type, String question, ArrayList<String> options, ArrayList<String> answers) {
+        this.type = type;
+        this.question = question;
+        this.options = options;
+        this.answers = answers;
     }
     public void setQuestion(String newQuestion) {
         this.question = newQuestion;
@@ -106,13 +141,20 @@ class Flashcard {
         System.out.println(this.getTypeString());
         System.out.println(this.question);
         switch (this.type) {
-            case (0): System.out.println("Something has gone wrong. Send Alice your log.txt file (found in the same directory as this executable).");
-            case (1): for (String option : this.getOptionsRandomized()) {System.out.println(option);} System.out.println(String.format("Expecting %s1 answers.",String.valueOf(this.answers.size())));
-            case (2): System.out.println("");
-            case (3): this.runQuestion();
+            case (0): System.out.println("Something has gone wrong. Send Alice your log.txt file (found in the same directory as this executable)."); break;
+            case (1): this.runChoiceQuestion(); break;
+            case (2): break;
+            case (3): this.runMatchQuestion(); break;
+        }
+        this.getUserAnswer();
+    }
+    private void runChoiceQuestion() {
+        System.out.println(String.format("Expecting %s answers from:",String.valueOf(this.answers.size())));
+        for (String option : this.getOptionsRandomized()) {
+            System.out.println(option);
         }
     }
-    private void runQuestion() {
+    private void runMatchQuestion() {
         System.out.println("Definitions:");
         char letter = 'A';
         ArrayList<String> localAnswers = this.getAnswersRandomized();
@@ -123,6 +165,13 @@ class Flashcard {
         System.out.println("Options:");
         for (String option : this.getOptionsRandomized()) {
             System.out.println(option);
+        }
+    }
+    private void getUserAnswer() {
+        String userAnswer = waitForInput();
+        System.out.print("Expected: ");
+        for (String answer : this.answers) {
+            System.out.print(answer);
         }
     }
 }
