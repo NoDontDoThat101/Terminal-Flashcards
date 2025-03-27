@@ -1,16 +1,19 @@
 package com.AliceficialIntelligence.app;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Scanner;
-import java.util.function.IntConsumer;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
-import java.util.NoSuchElementException;
-import java.util.Calendar;
-import java.lang.System;
+import java.util.Scanner;
+import java.util.function.IntConsumer;
 
-import org.jline.terminal.*;
+import org.jline.terminal.Cursor;
+import org.jline.terminal.Terminal;
+import org.jline.terminal.TerminalBuilder;
 
 public class TerminalFlashcards {
     static int terminalWidth;
@@ -32,40 +35,42 @@ public class TerminalFlashcards {
 }
 class Flashcard {
     public static void main(String[] args) throws IOException {
-        ArrayList<String> myAnswers = new ArrayList<String>();
-        myAnswers.add("Correctn't");
-        ArrayList<String> myOptions = new ArrayList<String>();
-        myOptions.add("Correct");
-        myOptions.add("Wrong");
-        ArrayList<String> expectedOptions = new ArrayList<String>();
-        expectedOptions.add("Correct");
-        expectedOptions.add("Wrong");
-        expectedOptions.add("Wronger");
-        ArrayList<String> expectedAnswers = new ArrayList<String>();
-        expectedAnswers.add("Correct");
-        Flashcard card = new Flashcard(1, "Test", myOptions, myAnswers);
-        card.addOption("Wronger");
-        card.resetAnswers();
-        card.addAnswer("Correct");
-        card.runCard(true);
-        card.runCard(true);
     }
     static Scanner scanr = new Scanner(System.in);
-    int type;
     String question;
-    ArrayList<String> options = new ArrayList<String>();
-    ArrayList<String> answers = new ArrayList<String>();
+    int type;
+    ArrayList<String> options = new ArrayList<>();
+    ArrayList<String> answers = new ArrayList<>();
+    String directory;
     public Flashcard() {
-        this.type = 0;
         this.question = "Default question";
+        this.type = 0;
         this.options.add("Default Option");
         this.answers.add("Default Answer");
+        this.directory = "";
+    }
+    public Flashcard(String path, int index) throws FileNotFoundException {
+        File file = new File(path);
+        String cardString;
+        try (Scanner scanr = new Scanner(file).useDelimiter("\n")) {
+            for (int iteration = 0;iteration < index;iteration++) {
+                scanr.nextLine();
+            }   cardString = scanr.nextLine();
+        }
+        Scanner scanrToo = new Scanner(cardString).useDelimiter("%&%");
+        this.question = scanrToo.next();
+        this.type = scanrToo.nextInt();
+        String optionsUnbroken = scanrToo.next();
+        String answersUnbroken = scanrToo.next();
+        Scanner scanrTee = new Scanner(optionsUnbroken).useDelimiter("%|%");
+        
     }
     public Flashcard(int type, String question, ArrayList<String> options, ArrayList<String> answers) {
-        this.type = type;
         this.question = question;
+        this.type = type;
         this.options = options;
         this.answers = answers;
+        this.directory = "";
     }
     public void setQuestion(String newQuestion) {
         this.question = newQuestion;
@@ -126,10 +131,18 @@ class Flashcard {
     }
     public String getTypeString() {
         switch (this.getType()) {
-            case (0): return "default question type";
-            case (1): return "Multiple Choice";
-            case (2): return "Short Answer";
-            case (3): return "Match to Definitions";
+            case (0) -> {
+                return "default question type";
+            }
+            case (1) -> {
+                return "Multiple Choice";
+            }
+            case (2) -> {
+                return "Short Answer";
+            }
+            case (3) -> {
+                return "Match to Definitions";
+            }
         }
         return "invalid";
     }
@@ -137,10 +150,11 @@ class Flashcard {
         System.out.println(this.getTypeString());
         System.out.println(this.question);
         switch (this.type) {
-            case (0): System.out.println("Something has gone wrong if you're seeing this!"); break;
-            case (1): this.runChoiceQuestion(); break;
-            case (2): break;
-            case (3): this.runMatchQuestion(); break;
+            case (0) -> System.out.println("Something has gone wrong if you're seeing this!");
+            case (1) -> this.runChoiceQuestion();
+            case (2) -> {
+            }
+            case (3) -> this.runMatchQuestion();
         }
         this.checkUserAnswer(this.getUserAnswer(log), log);
     }
@@ -166,7 +180,7 @@ class Flashcard {
     private String getUserAnswer(boolean log) {
         long startMillisecond = System.currentTimeMillis();
         String userAnswer = scanr.nextLine();
-        float timeTaken = ((float)(System.currentTimeMillis()) / 1000 - (float)(startMillisecond / 1000));
+        float timeTaken = (float)((System.currentTimeMillis() - startMillisecond) / 1000);
         if (log) {
             System.out.println(String.format("That took %fs.",timeTaken));
             this.log(timeTaken);
@@ -199,13 +213,12 @@ class Flashcard {
             this.log(points);
         }
     }
+    @SuppressWarnings("ConvertToTryWithResources")
     private void log(int points) {
-        // TODO: copy-paste log(time) for points. MAKE SURE THE LOG STILL LOGS IN FLOAT! log points% (= points / max points)
-        }
-    private void log(float time) {
+        float score = points / this.answers.size();
         try {
-            File file = new File("timeHistory.csv");
-            File tempFile = new File("timeHistoryWorking.csv");
+            File file = new File(this.directory + "scoreHistory.csv");
+            File tempFile = new File(this.directory + "scoreHistoryWorking.csv");
             FileWriter writer = new FileWriter(tempFile);
             if (file.createNewFile()) {writer.write("Date,Multiple Choice Score,Multiple Choice Total,Short Answer Score,Short Answer Total,Match Definitions Score,Match Definitions Total");writer.write(System.getProperty("line.separator"));}
             Scanner reader = new Scanner(file).useDelimiter("\\n");
@@ -213,6 +226,7 @@ class Flashcard {
             Calendar calendar = Calendar.getInstance();
             calendar.setTime(date);
             String dateString = String.format("%1$s/%2$s/%3$s",String.valueOf(calendar.get(Calendar.MONTH)+1),String.valueOf(calendar.get(Calendar.DAY_OF_MONTH)),String.valueOf(calendar.get(Calendar.YEAR)));
+            boolean found = false;
             while (reader.hasNextLine()) {
                 String line = reader.nextLine();
                 if (line.substring(0,line.indexOf(",")).contains(dateString)) {
@@ -224,16 +238,82 @@ class Flashcard {
                         indexMiddle = line.indexOf(",",indexStart+1);
                         indexEnd = line.indexOf(",",indexMiddle+1);
                     }
-                    writer.write(line.substring(0,indexStart+1) + String.valueOf(Float.valueOf(line.substring(indexStart+1,indexMiddle))+time) + "," + String.valueOf(Integer.valueOf(line.substring(indexMiddle+1,indexEnd))+1) + line.substring(indexEnd));
+                    writer.write(line.substring(0,indexStart+1) + String.valueOf(Float.parseFloat(line.substring(indexStart+1,indexMiddle))+score) + "," + String.valueOf(Integer.parseInt(line.substring(indexMiddle+1,indexEnd))+1) + line.substring(indexEnd));
+                    found = true;
                 } else {
                     writer.write(line);
                 }
                 writer.write(System.getProperty("line.separator"));
             }
+            if (!found) {
+                String line = dateString + ",0,0,0,0,0,0";
+                int indexStart = -1;
+                int indexMiddle = -1;
+                int indexEnd = -1;
+                for (int iteration = 0;iteration < this.type;iteration++) {
+                    indexStart = line.indexOf(",",indexEnd+1);
+                    indexMiddle = line.indexOf(",",indexStart+1);
+                    indexEnd = line.indexOf(",",indexMiddle+1);
+                }
+                writer.write(line.substring(0,indexStart+1) + String.valueOf(Float.parseFloat(line.substring(indexStart+1,indexMiddle))+score) + "," + String.valueOf(Integer.parseInt(line.substring(indexMiddle+1,indexEnd))+1) + line.substring(indexEnd));
+                writer.write(System.getProperty("line.separator"));
+            }
             writer.close();
             reader.close();
+            file.delete();
+            tempFile.renameTo(file);
         } catch (IOException except) {
-            except.printStackTrace();
+        }
+    }
+    @SuppressWarnings("ConvertToTryWithResources")
+    private void log(float time) {
+        try {
+            File file = new File(this.directory + "timeHistory.csv");
+            File tempFile = new File(this.directory + "timeHistoryWorking.csv");
+            FileWriter writer = new FileWriter(tempFile);
+            if (file.createNewFile()) {writer.write("Date,Multiple Choice Score,Multiple Choice Total,Short Answer Score,Short Answer Total,Match Definitions Score,Match Definitions Total");writer.write(System.getProperty("line.separator"));}
+            Scanner reader = new Scanner(file).useDelimiter("\\n");
+            Date date = new Date(System.currentTimeMillis());
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(date);
+            String dateString = String.format("%1$s/%2$s/%3$s",String.valueOf(calendar.get(Calendar.MONTH)+1),String.valueOf(calendar.get(Calendar.DAY_OF_MONTH)),String.valueOf(calendar.get(Calendar.YEAR)));
+            boolean found = false;
+            while (reader.hasNextLine()) {
+                String line = reader.nextLine();
+                if (line.substring(0,line.indexOf(",")).contains(dateString)) {
+                    int indexStart = -1;
+                    int indexMiddle = -1;
+                    int indexEnd = -1;
+                    for (int iteration = 0;iteration < this.type;iteration++) {
+                        indexStart = line.indexOf(",",indexEnd+1);
+                        indexMiddle = line.indexOf(",",indexStart+1);
+                        indexEnd = line.indexOf(",",indexMiddle+1);
+                    }
+                    writer.write(line.substring(0,indexStart+1) + String.valueOf(Float.parseFloat(line.substring(indexStart+1,indexMiddle))+time) + "," + String.valueOf(Integer.parseInt(line.substring(indexMiddle+1,indexEnd))+1) + line.substring(indexEnd));
+                    found = true;
+                } else {
+                    writer.write(line);
+                }
+                writer.write(System.getProperty("line.separator"));
+            }
+            if (!found) {
+                String line = dateString + ",0,0,0,0,0,0";
+                int indexStart = -1;
+                int indexMiddle = -1;
+                int indexEnd = -1;
+                for (int iteration = 0;iteration < this.type;iteration++) {
+                    indexStart = line.indexOf(",",indexEnd+1);
+                    indexMiddle = line.indexOf(",",indexStart+1);
+                    indexEnd = line.indexOf(",",indexMiddle+1);
+                }
+                writer.write(line.substring(0,indexStart+1) + String.valueOf(Float.parseFloat(line.substring(indexStart+1,indexMiddle))+time) + "," + String.valueOf(Integer.parseInt(line.substring(indexMiddle+1,indexEnd))+1) + line.substring(indexEnd));
+                writer.write(System.getProperty("line.separator"));
+            }
+            writer.close();
+            reader.close();
+            file.delete();
+            tempFile.renameTo(file);
+        } catch (IOException except) {
         }
     }
 }
