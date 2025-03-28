@@ -21,8 +21,12 @@ public class TerminalFlashcards {
     static Cursor cursor;
     static IntConsumer discard;
     public static void main(String[] args) {
-    }    
-    @SuppressWarnings("unused")
+        System.out.println("\033[2J\033[H");
+        updateTerminalCondition();
+        drawBox(50,1,(terminalWidth-80),(terminalHeight-4));
+        drawBox(30,10,(terminalWidth-80),(terminalHeight-4));
+        drawBox(10,20,(terminalWidth-80),(terminalHeight-4));
+    }
     private static void updateTerminalCondition() {
         try (Terminal terminal = TerminalBuilder.builder().build();) {
             terminalWidth = terminal.getWidth();
@@ -32,9 +36,33 @@ public class TerminalFlashcards {
             System.out.println("Oops.");
         }
     }
+    private static void drawBox(int x, int y, int width, int height) {
+        updateTerminalCondition();
+        System.out.print("\033[" + y + ";" + x + "f");
+        System.out.print("╔");
+        for (int iteration = 1;iteration < width-2;iteration++) {
+            System.out.print("═");
+        }
+        System.out.print("╗");
+        System.out.print("\033[" + (y+1) + ";" + x + "f");
+        for (int iteration = 1;iteration < height-2;iteration++) {
+            System.out.print("\033[" + x + "G║\033[" + (width-3) + "C║\033[1E");
+        }
+        System.out.print("\033[" + (y+height-2) + ";" + x + "f");
+        System.out.print("╚");
+        for (int iteration = 1;iteration < width-2;iteration++) {
+            System.out.print("═");
+        }
+        System.out.print("╝");
+    }
+    // ╔═╗
+    // ║ ║
+    // ╚═╝
 }
 class Flashcard {
     public static void main(String[] args) throws IOException {
+        Flashcard card = new Flashcard("questions.txt", 0);
+        card.runCard(true);
     }
     static Scanner scanr = new Scanner(System.in);
     String question;
@@ -60,10 +88,10 @@ class Flashcard {
         Scanner scanrToo = new Scanner(cardString).useDelimiter("%&%");
         this.question = scanrToo.next();
         this.type = scanrToo.nextInt();
-        String optionsUnbroken = scanrToo.next();
-        String answersUnbroken = scanrToo.next();
-        Scanner scanrTee = new Scanner(optionsUnbroken).useDelimiter("%|%");
-        
+        this.options = subScan(scanrToo.next());
+        this.answers = subScan(scanrToo.next());
+        this.directory = path.substring(0,path.indexOf("questions.txt"));
+        scanrToo.close();
     }
     public Flashcard(int type, String question, ArrayList<String> options, ArrayList<String> answers) {
         this.question = question;
@@ -71,6 +99,16 @@ class Flashcard {
         this.options = options;
         this.answers = answers;
         this.directory = "";
+    }
+    public ArrayList<String> subScan(String line) {
+        ArrayList<String> output = new ArrayList<>();
+        Scanner scanr = new Scanner(line).useDelimiter("%.%");
+        while (scanr.hasNext()) {
+            output.add(scanr.next());
+            System.out.println(output);
+        }
+        scanr.close();
+        return output;
     }
     public void setQuestion(String newQuestion) {
         this.question = newQuestion;
@@ -150,11 +188,10 @@ class Flashcard {
         System.out.println(this.getTypeString());
         System.out.println(this.question);
         switch (this.type) {
-            case (0) -> System.out.println("Something has gone wrong if you're seeing this!");
-            case (1) -> this.runChoiceQuestion();
-            case (2) -> {
-            }
-            case (3) -> this.runMatchQuestion();
+            case (0): System.out.println("Something has gone wrong if you're seeing this!"); break;
+            case (1): this.runChoiceQuestion(); break;
+            case (2): break;
+            case (3): this.runMatchQuestion(); break;
         }
         this.checkUserAnswer(this.getUserAnswer(log), log);
     }
@@ -244,8 +281,8 @@ class Flashcard {
                     writer.write(line);
                 }
                 writer.write(System.getProperty("line.separator"));
-            }
-            if (!found) {
+                }
+                if (!found) {
                 String line = dateString + ",0,0,0,0,0,0";
                 int indexStart = -1;
                 int indexMiddle = -1;

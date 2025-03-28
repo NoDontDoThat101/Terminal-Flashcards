@@ -1,0 +1,32 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "type": "java",
+            "name": "Current File",
+            "request": "launch",
+            "mainClass": "${file}",
+            "vmArgs": "--enable-native-access=ALL-UNNAMED"
+        },
+        {
+            "type": "java",
+            "name": "Flashcard",
+            "request": "launch",
+            "mainClass": "com.AliceficialIntelligence.app.Flashcard",
+            "projectName": "Terminal-Flashcards",
+            "vmArgs": "--enable-native-access=ALL-UNNAMED"
+        },
+        {
+            "type": "java",
+            "name": "TerminalFlashcards",
+            "request": "launch",
+            "mainClass": "com.AliceficialIntelligence.app.TerminalFlashcards",
+            "projectName": "Terminal-Flashcards",
+            "vmArgs": "--enable-native-access=ALL-UNNAMED"
+        }
+    ]
+}
