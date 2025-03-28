@@ -22,12 +22,53 @@ public class TerminalFlashcards {
     static IntConsumer discard;
     public static void main(String[] args) {
         System.out.println("\033[2J\033[H");
-        updateTerminalCondition();
-        drawBox(50,1,(terminalWidth-80),(terminalHeight-4));
-        drawBox(30,10,(terminalWidth-80),(terminalHeight-4));
-        drawBox(10,20,(terminalWidth-80),(terminalHeight-4));
+        funnyDVDLogo(7,4);
     }
-    private static void updateTerminalCondition() {
+    private static void funnyDVDLogo(int width, int height) {
+        int x = 1;
+        int y = 1;
+        boolean right = true;
+        boolean up = false;
+        int color = 1;
+        while (true) {
+            updateTerminalCondition();
+            if (right) {
+                if (x + width + 1 > terminalWidth) {right = false;color += 1;}
+            } else {
+                if (x == 1) {right = true;color += 1;}
+            }
+            if (up) {
+                if (y + height + 1 > terminalHeight) {up = false;color += 1;}
+            } else {
+                if (y == 1) {up = true;color += 1;}
+            }
+            if (color > 7) {
+                color = 1;
+            }
+            if (right) {
+                x++;
+            } else {
+                x--;
+            }
+            if (up) {
+                y++;
+            } else {
+                y--;
+            }
+            drawBox(x,y,width,height,color);
+        }
+    }
+    private static void showMetrics() {
+        int boxWidth = terminalWidth / 3 - 2;
+        int boxHeight = terminalHeight / 2;
+        drawGraph(1,1,boxWidth,boxHeight,2,"scoreHistory.csv",1);
+        drawGraph(3+boxWidth,1,boxWidth,boxHeight,2,"scoreHistory.csv",2);
+        drawGraph(5+boxWidth*2,1,boxWidth,boxHeight,2,"scoreHistory.csv",3);
+        drawGraph(1,1+boxHeight,boxWidth,boxHeight,2,"timeHistory.csv",1);
+        drawGraph(3+boxWidth,1+boxHeight,boxWidth,boxHeight,2,"timeHistory.csv",2);
+        drawGraph(5+boxWidth*2,1+boxHeight,boxWidth,boxHeight,2,"timeHistory.csv",3);
+    }
+    public static void updateTerminalCondition() {
         try (Terminal terminal = TerminalBuilder.builder().build();) {
             terminalWidth = terminal.getWidth();
             terminalHeight = terminal.getHeight();
@@ -36,9 +77,57 @@ public class TerminalFlashcards {
             System.out.println("Oops.");
         }
     }
-    private static void drawBox(int x, int y, int width, int height) {
+    private static void drawGraph(int x, int y, int width, int height, int color, String filePath, int type) {
+        try {
+            File file = new File(filePath);
+            Scanner scanr = new Scanner(file).useDelimiter("\n");
+            drawBox(x,y,width,height,color);
+            int length = -1;
+            while (scanr.hasNext()) {
+                scanr.next();
+                length++;
+            }
+            scanr.close();
+            Scanner scanrToo = new Scanner(file).useDelimiter("\n");
+            scanrToo.next();
+            ArrayList<Float> tracked = new ArrayList<>();
+            if (length > width) {
+
+            } else {
+                float maximum = 0;
+                for (int index = 0;index < length;index++) {
+                    String line = scanrToo.next();
+                    int indexStart = -1;
+                    int indexMiddle = -1;
+                    int indexEnd = -1;
+                    for (int iteration = 0;iteration < type;iteration++) {
+                        indexStart = line.indexOf(",",indexEnd+1);
+                        indexMiddle = line.indexOf(",",indexStart+1);
+                        indexEnd = line.indexOf(",",indexMiddle+1); // TODO: wtf
+                    }
+                    float relative = Float.valueOf(line.substring(indexStart+1,indexMiddle)) / Float.valueOf(line.substring(indexMiddle+1,indexEnd));
+                    if (relative >= maximum) {
+                        maximum = relative;
+                    }
+                    tracked.add(relative);
+                }
+                int iteration = 1;
+                for (float datapoint : tracked) {
+                    float percentage = datapoint / maximum;
+                    int position = (int)(percentage * (height - 2)) - 1;
+                    System.out.print("\033[1;3" + color + "m\033[" + (y+height-position) + ";" + (x+iteration) + "f");
+                    iteration++;
+                }
+            }
+            scanrToo.close();
+        } catch (FileNotFoundException e) {
+            System.out.print("\033[1;31m\033[" + (y+height) + ";" + (x+(width/2-2)) + "fERROR");
+            drawBox(x,y,width,height,1);
+        }
+    }
+    public static void drawBox(int x, int y, int width, int height, int color) {
         updateTerminalCondition();
-        System.out.print("\033[" + y + ";" + x + "f");
+        System.out.print("\033[1;3" + color + "m\033[" + y + ";" + x + "f");
         System.out.print("╔");
         for (int iteration = 1;iteration < width-2;iteration++) {
             System.out.print("═");
@@ -55,9 +144,6 @@ public class TerminalFlashcards {
         }
         System.out.print("╝");
     }
-    // ╔═╗
-    // ║ ║
-    // ╚═╝
 }
 class Flashcard {
     public static void main(String[] args) throws IOException {
@@ -257,7 +343,7 @@ class Flashcard {
             File file = new File(this.directory + "scoreHistory.csv");
             File tempFile = new File(this.directory + "scoreHistoryWorking.csv");
             FileWriter writer = new FileWriter(tempFile);
-            if (file.createNewFile()) {writer.write("Date,Multiple Choice Score,Multiple Choice Total,Short Answer Score,Short Answer Total,Match Definitions Score,Match Definitions Total");writer.write(System.getProperty("line.separator"));}
+            if (file.createNewFile()) {writer.write("Date,Multiple Choice Score,Multiple Choice Total,Short Answer Score,Short Answer Total,Match Definitions Score,Match Definitions Total,");writer.write(System.getProperty("line.separator"));}
             Scanner reader = new Scanner(file).useDelimiter("\\n");
             Date date = new Date(System.currentTimeMillis());
             Calendar calendar = Calendar.getInstance();
@@ -283,7 +369,7 @@ class Flashcard {
                 writer.write(System.getProperty("line.separator"));
                 }
                 if (!found) {
-                String line = dateString + ",0,0,0,0,0,0";
+                String line = dateString + ",0,0,0,0,0,0,";
                 int indexStart = -1;
                 int indexMiddle = -1;
                 int indexEnd = -1;
@@ -308,7 +394,7 @@ class Flashcard {
             File file = new File(this.directory + "timeHistory.csv");
             File tempFile = new File(this.directory + "timeHistoryWorking.csv");
             FileWriter writer = new FileWriter(tempFile);
-            if (file.createNewFile()) {writer.write("Date,Multiple Choice Score,Multiple Choice Total,Short Answer Score,Short Answer Total,Match Definitions Score,Match Definitions Total");writer.write(System.getProperty("line.separator"));}
+            if (file.createNewFile()) {writer.write("Date,Multiple Choice Score,Multiple Choice Total,Short Answer Score,Short Answer Total,Match Definitions Score,Match Definitions Total,");writer.write(System.getProperty("line.separator"));}
             Scanner reader = new Scanner(file).useDelimiter("\\n");
             Date date = new Date(System.currentTimeMillis());
             Calendar calendar = Calendar.getInstance();
@@ -334,7 +420,7 @@ class Flashcard {
                 writer.write(System.getProperty("line.separator"));
             }
             if (!found) {
-                String line = dateString + ",0,0,0,0,0,0";
+                String line = dateString + ",0,0,0,0,0,0,";
                 int indexStart = -1;
                 int indexMiddle = -1;
                 int indexEnd = -1;
